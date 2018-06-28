@@ -10,7 +10,7 @@
  * 1. Имя маски отображается в цитировании и при обращении.
  */
 
-let hvScriptSet = {
+const hvScriptSet = {
 
   addMask: function (opt = {}) {
 
@@ -133,132 +133,121 @@ let hvScriptSet = {
         post.profile.classList.add('hv-mask');
         post.text.innerHTML = post.clearedText + (sign ? sign[0] : '');
       });
+    }
 
-      function changePostAvatar(post) {
-        const avatarEl = post.profile.querySelector('.pa-avatar img');
-        if (avatarEl) {
-          avatarEl.src = post.changeList.avatar.content;
-          avatarEl.removeAttribute('width');
-          avatarEl.removeAttribute('height');
-        } else {
-          const prev = userFields[userFields.indexOf('pa-avatar') - 1];
-          const el = prev
-            ? post.profile.querySelector(`.${prev}`)
-            : post.profile;
-          const place = prev
-            ? 'afterEnd'
-            : 'beforeEnd';
-          el.insertAdjacentHTML(
-            place,
-            `<div class="pa-avatar"><img src="${post.changeList.avatar.content}"></div>`
-          );
-        }
-      }
-
-      function changePostAuthor(post) {
-        const author = post.profile.querySelector('.pa-author a')
-          || post.profile.querySelector('.pa-author');
-        const content = post.changeList.author.content.substring(0, 25)
-        author.innerText = content;
-        if (author.href && author.href.includes('javascript')) {
-          author.href = `javascript:to('${content}')`;
-        };
-        if (post.post.querySelector('.pl-quote a')) {
-          post.post.querySelector('.pl-quote a').href = `javascript:quote('${content}', ${post.postId.slice(1)})`
-        }
-      }
-
-      function changePostHtml(post, key) {
-        let content = strToHtml(post.changeList[key].content);
-        if (content === '') {
-          if (UserID === post.userId) {
-            $.jGrowl(`Что-то не так с маской в вашем посте ${post.postId}. В ней найдены некорректные тэги. Маска не будет применена.`, { header: 'Ошибка скрипта маски', sticky: true });
-            return;
-          }
-          if (GroupID === 1 || GroupID === 2) {
-            $.jGrowl(`Что-то не так с маской юзера ${post.username} в посте ${post.postId}. В ней найдены некорректные тэги. Маска не будет применена.`, { header: 'Ошибка скрипта маски', sticky: true });
-            return;
-          }
-        }
-        if (content.length > 999) return;
-
-        const field = post.profile.querySelector(`.${post.changeList[key].field}`);
-        field.innerHTML = content;
-      }
-
-      function changePostBBCode(post, key) {
-        const content = post.changeList[key].content;
-        if (content.length > 999) return;
-
-        const field = post.profile.querySelector(`.${post.changeList[key].field}`);
-        field.innerHTML = content;
-      }
-
-      function changePostText(post, key) {
-        let content = post.changeList[key].content
-          .replace(/</i, '&lt').replace(/>/i, '&rt');
-        const limit = key === 'title' ? 50 : 999;
-
-        const field = post.profile.querySelector(`.${post.changeList[key].field}`);
-        field.innerHTML = content;
-      }
-
-      function changePostSignature(post) {
-        if (GroupID === '3') return;
-
-        if (!post.signature) {
-          post.text.insertAdjacentHTML(
-            'beforeEnd',
-            `<dl class="post-sig">
-            <dt><span>Подпись автора</span></dt>
-            <dd>${post.changeList['signature'].content}</dd></dl>`
-          );
-          return;
-        }
-        post.signature.innerHTML = post.changeList['signature'].content;
-      }
-
-      function insertProfileField(profile, field) {
-        let prev;
-        for (let i = userFields.indexOf(field); i >= 0; --i) {
-          if (profile.querySelector(`.${userFields[i]}`)) {
-            prev = userFields[i];
-            break;
-          }
-        }
-        const el = prev ? profile.querySelector(`.${prev}`)
-          : profile;
-        const place = prev ? 'afterEnd' : 'beforeEnd';
+    function changePostAvatar(post) {
+      const avatarEl = post.profile.querySelector('.pa-avatar img');
+      if (avatarEl) {
+        avatarEl.src = post.changeList.avatar.content;
+        avatarEl.removeAttribute('width');
+        avatarEl.removeAttribute('height');
+      } else {
+        const prev = userFields[userFields.indexOf('pa-avatar') - 1];
+        const el = prev
+          ? post.profile.querySelector(`.${prev}`)
+          : post.profile;
+        const place = prev
+          ? 'afterEnd'
+          : 'beforeEnd';
         el.insertAdjacentHTML(
           place,
-          `<div class="${field}"></div>`
+          `<div class="pa-avatar"><img src="${post.changeList.avatar.content}"></div>`
         );
+      }
     }
+
+    function changePostAuthor(post) {
+      const author = post.profile.querySelector('.pa-author a')
+        || post.profile.querySelector('.pa-author');
+      const content = post.changeList.author.content.substring(0, 25)
+      author.innerText = content;
+      if (author.href && author.href.includes('javascript')) {
+        author.href = `javascript:to('${content}')`;
+      };
+      if (post.post.querySelector('.pl-quote a')) {
+        post.post.querySelector('.pl-quote a').href = `javascript:quote('${content}', ${post.postId.slice(1)})`
+      }
+    }
+
+    function changePostHtml(post, key) {
+      let content = strToHtml(post.changeList[key].content);
+      if (content === '') {
+        if (UserID === post.userId) {
+          $.jGrowl(`Что-то не так с маской в вашем посте ${post.postId}. В ней найдены некорректные тэги. Маска не будет применена.`, { header: 'Ошибка скрипта маски', sticky: true });
+          return;
+        }
+        if (GroupID === 1 || GroupID === 2) {
+          $.jGrowl(`Что-то не так с маской юзера ${post.username} в посте ${post.postId}. В ней найдены некорректные тэги. Маска не будет применена.`, { header: 'Ошибка скрипта маски', sticky: true });
+          return;
+        }
+      }
+      if (content.length > 999) return;
+
+      const field = post.profile.querySelector(`.${post.changeList[key].field}`);
+      field.innerHTML = content;
+    }
+
+    function changePostBBCode(post, key) {
+      const content = post.changeList[key].content;
+      if (content.length > 999) return;
+
+      const field = post.profile.querySelector(`.${post.changeList[key].field}`);
+      field.innerHTML = content;
+    }
+
+    function changePostText(post, key) {
+      let content = post.changeList[key].content
+        .replace(/</i, '&lt').replace(/>/i, '&rt');
+      const limit = key === 'title' ? 50 : 999;
+
+      const field = post.profile.querySelector(`.${post.changeList[key].field}`);
+      field.innerHTML = content;
+    }
+
+    function changePostSignature(post) {
+      if (GroupID === '3') return;
+
+      if (!post.signature) {
+        post.text.insertAdjacentHTML(
+          'beforeEnd',
+          `<dl class="post-sig">
+          <dt><span>Подпись автора</span></dt>
+          <dd>${post.changeList['signature'].content}</dd></dl>`
+        );
+        return;
+      }
+      post.signature.innerHTML = post.changeList['signature'].content;
+    }
+
+    function insertProfileField(profile, field) {
+      let prev;
+      for (let i = userFields.indexOf(field); i >= 0; --i) {
+        if (profile.querySelector(`.${userFields[i]}`)) {
+          prev = userFields[i];
+          break;
+        }
+      }
+      const el = prev ? profile.querySelector(`.${prev}`)
+        : profile;
+      const place = prev ? 'afterEnd' : 'beforeEnd';
+      el.insertAdjacentHTML(
+        place,
+        `<div class="${field}"></div>`
+      );
+    }
+
+    function getTagPattern(tag) {
+      return new RegExp(`\\[${tag}\\](.*?)\\[\/${tag}\\]`, 'gi');
     }
 
     function hideTags() {
-      posts = document.querySelectorAll('.post');
-      for (let i in posts) {
-        if (posts.hasOwnProperty(i)) {
-          let text = posts[i].querySelector('.post-content');
-          for (let tag in allTagsList) {
-            if (allTagsList.hasOwnProperty(tag)) {
-              let pattern =
-                new RegExp('\\[' + allTagsList[tag] + '\\](.*?)\\[\/' + allTagsList[tag] + '\\]', 'gi');
-              text.innerHTML = text.innerHTML.replace(pattern, '');
-            }
-          }
+      posts = document.querySelectorAll('.post-content');
+      posts.forEach(post => {
+        const tags = getTags(post.innerHTML);
+        if (Object.keys(tags).length > 0) {
+          post.innerHTML = getClearedPost(post, tags);
         }
-      }
-    }
-
-    function hidePreviewTags() {
-      let text = document.querySelector('.post-content');
-      if (!text) return;
-      let tags = getTags(text.innerHTML);
-      if (tags.length > 0) {
-        text.innerHTML = getClearedPost(text, tags);
-      }
+      });
     }
 
     function getUserIdFromPost(post) {
@@ -816,7 +805,7 @@ let hvScriptSet = {
 
       let _loop = function _loop(mask) {
         if (changeList.hasOwnProperty(mask)) {
-          (function() {
+          (function () {
             let li = document.createElement('div');
             li.className = 'hv-mask-field ' + mask;
             let input = void 0;
@@ -857,7 +846,7 @@ let hvScriptSet = {
               templateButton.className = 'button hv-add-template';
               templateButton.innerText = '« вставить шаблон';
               templateButton.title = 'Вставить шаблон';
-              templateButton.addEventListener('click', function() {
+              templateButton.addEventListener('click', function () {
                 fillInput(input, changeList[mask].defaultCode);
                 changeMaskForm(mask, input.value);
               });
@@ -1253,7 +1242,7 @@ let hvScriptSet = {
       });
 
       return JSON.parse(mask.responseText).response &&
-      JSON.parse(mask.responseText).response.storage.data.maskListUser ?
+        JSON.parse(mask.responseText).response.storage.data.maskListUser ?
         decodeURI(JSON.parse(mask.responseText).response.storage.data.maskListUser) : '';
     }
 
@@ -1310,7 +1299,7 @@ let hvScriptSet = {
         if (GroupID !== 3) {
           getDialog();
         }
-        hidePreviewTags();
+        hideTags();
       } else {
         hideTags();
       }
