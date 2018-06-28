@@ -10,17 +10,29 @@
  * 1. Имя маски отображается в цитировании и при обращении.
  */
 
-const hvScriptSet = {
+class AddMask {
+  constructor(opt) {
+    this.setSchema(opt);
+    this.initMask = this.initMask.bind(this);
 
-  addMask: function (opt = {}) {
+    document.addEventListener('DOMContentLoaded', this.initMask);
+  }
 
-    const changeList = {
+  setSchema(opt) {
+    this.opt = {
+      userFields: ['pa-author', 'pa-title', 'pa-avatar', 'pa-fld1', 'pa-reg', 'pa-posts', 'pa-respect', 'pa-positive', 'pa-awards', 'pa-gifts'],
+      defaultAvatar: 'http://i.imgur.com/bQuC3S1.png',
+      buttonImage : 'http://i.imgur.com/ONu0llO.png',
+      showPreview: true,
+      ...opt
+    }
+    this.schema = {
       'author': {
         title: 'Ник',
         description: 'Только текст',
         tag: 'nick,nic',
         class: 'pa-author',
-        type: 'link'
+        type: 'author'
       },
       'title': {
         title: 'Статус',
@@ -44,14 +56,124 @@ const hvScriptSet = {
         type: 'signature'
       },
       ...opt.changeList
-    };
+    }
+    this.tagList = Object.keys(this.schema)
+      .reduce((result, item) => {
+        const temp = {};
+        this.schema[item].tag.replace(' ', '').split(',').forEach(tag => temp[tag] = item);
+        return {
+          ...result,
+          ...temp
+        }
+      }, {});
+  }
+
+  initMask() {
+    if (FORUM && FORUM.editor) {
+      this.initDialog();
+    }
+
+    this.parsePosts();
+    if (FORUM && FORUM.topic) {
+      this.applyMask();
+    }
+  }
+
+  //
+
+  initDialog() {
+    console.log('initDialog');
+  }
+
+  applyMask() {
+    console.log('applyMask');
+  }
+
+  parsePosts() {
+    // builds changes object
+    this.maskedPosts = {};
+
+    const posts = document.querySelectorAll('.post-content');
+    posts.forEach(post => {
+      const postId = post.id.split('-')[0];
+      const text = this.getPostHtmlWithoutCodeboxes(post.innerHTML);
+      const changes = {};
+      const tags = [];
+
+      Object.keys(this.tagList).forEach(tag => {
+        const pattern = this.getTagPattern(tag);
+        const matches = text.match(pattern);
+
+        if (matches) {
+          const clearPattern = new RegExp(`\\[(\\/?)${tag}\\]`, 'gmi');
+          tags.push(tag);
+          changes[this.tagList[tag]] = {
+            tag: tag,
+            text: matches[0].replace(clearPattern, '')
+          };
+        }
+      });
+
+      if (Object.keys(changes).length) {
+        this.hideMaskTags(post, tags);
+
+        if (!postId) return;
+        this.maskedPosts[postId] = {
+          postId,
+          changes
+        };
+      }
+    });
+  }
+
+  // functions
+
+  hideMaskTags(post, tags) {
+    const delimiter = '|(:-:)|';
+    const signDelimiter = '{{!!!}}';
+    const codeBoxes = post.innerHTML.match(this.getCodeBoxPattern(), delimiter) || [];
+    const signature = post.innerHTML.match(this.getSignaturePattern(), signDelimiter) || '';
+    let text = this.getPostHtmlWithoutCodeboxes(post.innerHTML, delimiter)
+      .replace(this.getSignaturePattern(), '');
+
+    tags.forEach(tag => {
+      text = text.replace(this.getTagPattern(tag), '');
+    });
+
+    codeBoxes.forEach(code => text = text.replace(delimiter, code));
+
+    post.innerHTML = text.replace(signDelimiter, signature[0]);
+  }
+
+  // helpers
+
+  getSignaturePattern() {
+    return new RegExp('<dl class="post-sig">([\\s\\S]*?)?<\\/dl>', 'g');
+  }
+
+  getCodeBoxPattern() {
+    return new RegExp('<div class="code-box"><strong class="legend">([\\s\\S]*?)?<\\/strong><div class="blockcode"><div class="scrollbox" style="(?:.*?)"><pre>([\\s\\S]*?)?<\\/pre><\\/div><\\/div><\\/div>', 'gi');
+  }
+
+  getPostHtmlWithoutCodeboxes(html, delimiter) {
+    return html.replace(this.getCodeBoxPattern(), delimiter || '');
+  }
+
+  getTagPattern(tag) {
+    return new RegExp(`\\[${tag}\\](.*?)\\[\/${tag}\\]`, 'gi');
+  }
+
+}
+
+const hvScriptSet = {
+
+  addMask: (opt) => new AddMask(opt),
+
+  temp: function (opt = {}) {
 
     let tmpMask = {};
     let previewForm = {};
     let errorList = {};
-
-    const userFields = opt.userFields || ['pa-author', 'pa-title', 'pa-avatar', 'pa-fld1', 'pa-reg',
-      'pa-posts', 'pa-respect', 'pa-positive', 'pa-awards', 'pa-gifts'];
 
     const allTagsList = getTagList();
 
@@ -1289,20 +1411,5 @@ const hvScriptSet = {
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      if (FORUM.topic) {
-        getPosts();
-        if (GroupID !== 3) {
-          getDialog();
-        }
-      } else if (!FORUM.topic && FORUM.editor) {
-        if (GroupID !== 3) {
-          getDialog();
-        }
-        hideTags();
-      } else {
-        hideTags();
-      }
-    });
   }
 };
