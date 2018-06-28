@@ -14,6 +14,7 @@ class AddMask {
   constructor(opt) {
     this.setSchema(opt);
     this.initMask = this.initMask.bind(this);
+    this.setMasks = this.setMasks.bind(this);
 
     document.addEventListener('DOMContentLoaded', this.initMask);
   }
@@ -22,7 +23,7 @@ class AddMask {
     this.opt = {
       userFields: ['pa-author', 'pa-title', 'pa-avatar', 'pa-fld1', 'pa-reg', 'pa-posts', 'pa-respect', 'pa-positive', 'pa-awards', 'pa-gifts'],
       defaultAvatar: 'http://i.imgur.com/bQuC3S1.png',
-      buttonImage : 'http://i.imgur.com/ONu0llO.png',
+      buttonImage: 'http://i.imgur.com/ONu0llO.png',
       showPreview: true,
       ...opt
     }
@@ -81,23 +82,15 @@ class AddMask {
 
   //
 
-  initDialog() {
-    console.log('initDialog');
-  }
-
-  applyMask() {
-    console.log('applyMask');
-  }
-
   parsePosts() {
-    // builds changes object
     this.maskedPosts = {};
+    this.authorsId = [];
 
     const posts = document.querySelectorAll('.post-content');
-    posts.forEach(post => {
-      const postId = post.id.split('-')[0];
-      const text = this.getPostHtmlWithoutCodeboxes(post.innerHTML);
-      const changes = {};
+    posts.forEach(postContent => {
+      const postId = postContent.id.split('-')[0];
+      const text = this.getPostHtmlWithoutCodeboxes(postContent.innerHTML);
+      const changes = [];
       const tags = [];
 
       Object.keys(this.tagList).forEach(tag => {
@@ -107,26 +100,99 @@ class AddMask {
         if (matches) {
           const clearPattern = new RegExp(`\\[(\\/?)${tag}\\]`, 'gmi');
           tags.push(tag);
-          changes[this.tagList[tag]] = {
-            tag: tag,
+          changes.push({
+            type: this.tagList[tag],
             text: matches[0].replace(clearPattern, '')
-          };
+          });
         }
       });
 
-      if (Object.keys(changes).length) {
-        this.hideMaskTags(post, tags);
+      if (changes.length) {
+        // clear post from mask tags
+        this.hideMaskTags(postContent, tags);
 
         if (!postId) return;
+        const postElement = document.getElementById(postId);
+        const userId = this.getUserIdFromPost(postElement);
         this.maskedPosts[postId] = {
+          post: postElement,
+          profile: postElement.querySelector('.post-author ul'),
+          userId,
           postId,
           changes
         };
+        if (!this.authorsId.includes(userId) && userId !== '1') this.authorsId.push(userId);
       }
     });
   }
 
+  applyMask() {
+    this.authors = {
+      '1': {
+        'userId': '1',
+        'username': 'Guest',
+        'groupId': '3',
+        'groupTitle': 'Гость'
+      }
+    };
+
+    this.getUsersInfo().then(this.setMasks);
+
+  }
+
+  initDialog() {
+    console.log('initDialog');
+  }
+
   // functions
+
+  setMasks() {
+    Object.values(this.maskedPosts).forEach(post => {
+      const authorPermissions = this.getAuthorPermissions(post.userId);
+      const profile = post.post.querySelector('.post-author ul');
+      post.changes.forEach(change => {
+
+        // common mask: avatar only
+        if (!authorPermissions.common) {
+          return;
+        }
+
+        if (change.type === 'avatar') {
+          this.changePostAvatar(post, change.text);
+          return;
+        }
+
+        // extended mask
+        if (!authorPermissions.extended) {
+          return;
+        }
+
+        if (change.type === 'signature') {
+          // this.changePostSignature(post, change.text);
+          return;
+        }
+
+        if (!post.profile.querySelector(`.${this.schema[change.type].class}`)) {
+          this.insertProfileField(post.profile, this.schema[change.type].class);
+        }
+        switch (this.schema[change.type].type) {
+          case 'author':
+            this.changePostAuthor(post, change.text);
+            break;
+          case 'html':
+            this.changePostHtml(post, change);
+            break;
+          case 'bbcode':
+            // this.changePostBBCode(post, change);
+            break;
+          case 'text':
+          default:
+            // this.changePostText(post, change);
+        }
+
+      });
+    });
+  }
 
   hideMaskTags(post, tags) {
     const delimiter = '|(:-:)|';
@@ -145,7 +211,164 @@ class AddMask {
     post.innerHTML = text.replace(signDelimiter, signature[0]);
   }
 
+  insertProfileField(profile, field) {
+    let prev;
+    for (let i = this.opt.userFields.indexOf(field); i >= 0; --i) {
+      if (profile.querySelector(`.${this.opt.userFields[i]}`)) {
+        prev = this.opt.userFields[i];
+        break;
+      }
+    }
+    const el = prev ? profile.querySelector(`.${prev}`)
+      : profile;
+    const place = prev ? 'afterEnd' : 'beforeEnd';
+    el.insertAdjacentHTML(
+      place,
+      `<li class="${field}"></div>`
+    );
+  }
+
+  // changes
+
+  changePostAvatar(post, url) {
+    if (!this.checkImageUrl(url)) {
+      // todo: сообщение юзеру о неисправной ссылке
+      return;
+    }
+
+    const avatarEl = post.profile.querySelector('.pa-avatar img');
+    if (avatarEl) {
+      avatarEl.src = url;
+      avatarEl.removeAttribute('width');
+      avatarEl.removeAttribute('height');
+    } else {
+      const prev = this.opt.userFields[this.opt.userFields.indexOf('pa-avatar') - 1];
+      const el = prev
+        ? post.profile.querySelector(`.${prev}`)
+        : post.profile;
+      const place = prev
+        ? 'afterEnd'
+        : 'beforeEnd';
+      el.insertAdjacentHTML(
+        place,
+        `<div class="pa-avatar"><img src="${url}"></div>`
+      );
+    }
+  }
+
+  changePostAuthor(post, name) {
+    const author = post.profile.querySelector('.pa-author a')
+      || post.profile.querySelector('.pa-author');
+    const content = name.substring(0, 25)
+    author.innerText = content;
+    if (author.href && author.href.includes('javascript')) {
+      author.href = `javascript:to('${content}')`;
+    };
+    if (post.post.querySelector('.pl-quote a')) {
+      post.post.querySelector('.pl-quote a').href = `javascript:quote('${content}', ${post.postId.slice(1)})`
+    }
+  }
+
+  changePostHtml(post, change) {
+    const content = this.strToHtml(change.text);
+    if (content === '') {
+      const author = this.authors[post.userId];
+      if (+UserID === +post.userId) {
+        $.jGrowl(`Что-то не так с маской в вашем посте ${post.postId}. В ней найдены некорректные тэги. Маска не будет применена.`, { header: 'Ошибка скрипта маски', sticky: true });
+        return;
+      }
+      if (GroupID === 1 || GroupID === 2) {
+        $.jGrowl(`Что-то не так с маской юзера ${author.username} в посте ${post.postId}. В ней найдены некорректные тэги. Маска не будет применена.`, { header: 'Ошибка скрипта маски', sticky: true });
+        return;
+      }
+    }
+    if (content.length > 999) return;
+
+    const field = post.profile.querySelector(`.${this.schema[change.type].class}`);
+    field.innerHTML = content;
+  }
+
+  // requests
+
+  async getUsersInfo() {
+    const params = {
+      async: false,
+      url: '/api.php',
+      data: {
+        method: 'users.get',
+        user_id: this.authorsId.join(',')
+      }
+    };
+
+    const { response } = await $.ajax(params);
+
+    if (!response) return;
+
+    response.users.forEach(user => {
+      this.authors[user.user_id] = {
+        userId: user.user_id,
+        username: user.username,
+        groupId: user.group_id,
+        groupTitle: user.group_title
+      };
+    });
+  }
+
   // helpers
+
+  getAuthorPermissions(userId) {
+    const { groupId, groupTitle } = this.authors[userId];
+
+    if (groupId === '1' || groupId === '2') {
+      return {
+        common: true,
+        extended: true
+      }
+    }
+
+    const forumName = this.getClearedForumName(FORUM.topic.forum_name);
+
+    if (groupId === '3') {
+      return {
+        common: this.opt.guestAccess
+          ? this.opt.guestAccess.includes(forumName)
+          : false,
+        extended: this.opt.guestAccess
+          ? this.opt.guestAccess.includes(forumName)
+          : false
+      }
+    }
+
+    return {
+      common: this.opt.forumAccess && this.opt.forumAccess[forumName]
+        ? this.opt.forumAccess[forumName].includes(groupTitle)
+        : true,
+      extended: this.opt.forumAccessExtended && this.opt.forumAccessExtended[forumName]
+        ? this.opt.forumAccessExtended[forumName].includes(groupTitle)
+        : false
+    };
+  }
+
+  getUserIdFromPost(post) {
+    let userId = '1';
+    if (UserID === 1) {
+      const postUserNameLink = post.querySelector('.pa-author a');
+      if (postUserNameLink && postUserNameLink.href.includes('/profile.php')) {
+        userId = postUserNameLink.href.split('=')[1];
+      }
+    } else {
+      const postProfileLinks = post.querySelector('.post-links');
+      let postProfileUserLink = postProfileLinks.querySelector('a[href*="/profile.php"]');
+      userId = postProfileUserLink ? postProfileUserLink.href.split('=')[1] : '1';
+    }
+    return userId;
+  }
+
+  getClearedForumName(name) {
+    return name[0] === String.fromCharCode(173) ?
+      name.substr(1) // совместимость со скриптом подфорумов
+      : name;
+  }
 
   getSignaturePattern() {
     return new RegExp('<dl class="post-sig">([\\s\\S]*?)?<\\/dl>', 'g');
@@ -160,7 +383,54 @@ class AddMask {
   }
 
   getTagPattern(tag) {
-    return new RegExp(`\\[${tag}\\](.*?)\\[\/${tag}\\]`, 'gi');
+    return new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[\/${tag}\\]`, 'gi');
+  }
+
+  strToHtml(str) {
+    let error = { name: 'wrongtag' };
+    const forbiddenTags = ['input', 'button', 'script', 'iframe', 'frame', 'style', 'audio', 'video', 'form',
+      'footer', 'header', 'head', 'html', 'map', 'select', 'textarea', 'xmp', 'object', 'embed',
+      'var', 'meta'];
+    const forbiddenEvents = ['onblur', 'onchange', 'onclick', 'ondblclick', 'onfocus', 'onkeydown', 'onkeypress',
+      'onkeyup', 'onload', 'onmousedown', 'onmousemove', 'onmouseout', 'onmouseover', 'onmouseup', 'onreset',
+      'onselect', 'onscroll', 'onsubmit', 'onunload', 'javascript', 'onerror', 'oninput', 'onafterprint',
+      'onbeforeprint', 'onbeforeunload', 'onhashchange', 'onmessage', 'onoffline', 'ononline', 'onpagehide',
+      'onpageshow', 'onpopstate', 'onresize', 'onstorage', 'oncontextmenu', 'oninvalid', 'onreset', 'onsearch',
+      'ondrag', 'ondragend', 'ondragenter', 'ondragleave', 'ondragover', 'ondragstart', 'ondrop', 'onmousedown',
+      'onmousewheel', 'onwheel', 'oncopy', 'oncut', 'onpaste', 'onabort', 'oncanplay', 'oncanplaythrough',
+      'oncuechange', 'ondurationchange', 'onemptied', 'onended', 'onerror', 'onloadeddata', 'onloadedmetadata',
+      'onloadstart', 'onpause', 'onplay', 'onplaying', 'onprogress', 'onratechange', 'onseeked', 'onseeking',
+      'onstalled', 'onsuspend', 'ontimeupdate', 'onvolumechange', 'onwaiting'];
+
+    try {
+      forbiddenTags.forEach(tag => {
+        const pattern = new RegExp(`(<|&lt;)${tag}( |>|/)?`);
+        const match = pattern.exec(str);
+        if (match) {
+          throw error;
+        }
+      });
+      forbiddenEvents.forEach(tag => {
+        const pattern = new RegExp(`${tag}=`);
+        const match = pattern.exec(str);
+        if (match) {
+          throw error;
+        }
+      });
+    }
+    catch (err) {
+      if (err.name === 'wrongtag') {
+        return '';
+      }
+    }
+    const check = /&lt;(.*?)?( xlink:| id=(.*?)?)/.test(str);
+
+    // todo: проверить открытые/закрытые тэги
+    return check ? '' : str.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  }
+
+  checkImageUrl(url) {
+    return /^(http)?s?:?(\/\/[^"']*\.(?:png|jpg|jpeg|gif|png|svg))$/.test(url);
   }
 
 }
