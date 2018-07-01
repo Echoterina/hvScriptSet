@@ -1,13 +1,10 @@
-"use strict";
+﻿"use strict";
 
 /**
  * hvScriptSet
- * Version: 1.0.11
+ * Version: 1.1.0
  * Author: Человек-Шаман
  * license: MIT
- *
- * Что нового:
- * 1. Имя маски отображается в цитировании и при обращении.
  */
 
 class AddMask {
@@ -80,7 +77,7 @@ class AddMask {
     }
   }
 
-  //
+  // base methods
 
   parsePosts() {
     this.maskedPosts = {};
@@ -144,7 +141,7 @@ class AddMask {
     console.log('initDialog');
   }
 
-  // functions
+  // post functions
 
   setMasks() {
     Object.values(this.maskedPosts).forEach(post => {
@@ -162,13 +159,13 @@ class AddMask {
           return;
         }
 
-        // extended mask
+        // extended mask check
         if (!authorPermissions.extended) {
           return;
         }
 
         if (change.type === 'signature') {
-          // this.changePostSignature(post, change.text);
+          this.changePostSignature(post, change.text);
           return;
         }
 
@@ -183,14 +180,14 @@ class AddMask {
             this.changePostHtml(post, change);
             break;
           case 'bbcode':
-            // this.changePostBBCode(post, change);
+            this.changePostBBCode(post, change);
             break;
           case 'text':
           default:
-            // this.changePostText(post, change);
+            this.changePostText(post, change);
         }
-
       });
+      post.profile.classList.add('hv-mask');
     });
   }
 
@@ -219,7 +216,8 @@ class AddMask {
         break;
       }
     }
-    const el = prev ? profile.querySelector(`.${prev}`)
+    const el = prev
+      ? profile.querySelector(`.${prev}`)
       : profile;
     const place = prev ? 'afterEnd' : 'beforeEnd';
     el.insertAdjacentHTML(
@@ -232,7 +230,6 @@ class AddMask {
 
   changePostAvatar(post, url) {
     if (!this.checkImageUrl(url)) {
-      // todo: сообщение юзеру о неисправной ссылке
       return;
     }
 
@@ -286,6 +283,41 @@ class AddMask {
 
     const field = post.profile.querySelector(`.${this.schema[change.type].class}`);
     field.innerHTML = content;
+  }
+
+  changePostBBCode(post, change) {
+    const content = change.text;
+    if (content.length > 999) return;
+
+    const field = post.profile.querySelector(`.${this.schema[change.type].class}`);
+    field.innerHTML = content;
+  }
+
+  changePostText(post, change) {
+    const content = change.text
+      .replace(/</i, '&lt').replace(/>/i, '&rt');
+    
+    const limit = change.type === 'title' ? 50 : 999;
+
+    const field = post.profile.querySelector(`.${this.schema[change.type].class}`);
+    field.innerHTML = content.substring(0, limit);
+  }
+
+  changePostSignature(post, text) {
+    if (GroupID == '3') return;
+    const signature = post.post.querySelector('dl.post-sig');
+
+    if (!signature) {
+      const postContent = post.post.querySelector('.post-content');
+      postContent.insertAdjacentHTML(
+        'beforeEnd',
+        `<dl class="post-sig">
+        <dt><span>Подпись автора</span></dt>
+        <dd>${text}</dd></dl>`
+      );
+      return;
+    }
+    signature.innerHTML = text;
   }
 
   // requests
