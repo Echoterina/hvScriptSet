@@ -138,14 +138,36 @@ class AddMask {
   }
 
   initDialog() {
-    console.log('initDialog');
+    const form = document.getElementById('pun-main');
+
+    if (!form) {
+      return;
+    }
+
+    let forumName = FORUM.topic && FORUM.topic.forum_name;
+
+    if (!forumName) {
+      forumName = this.getForumNameFromPage();
+    }
+
+    if (!forumName) {
+      // some shit happens, it's wrong page I guess
+      return;
+    }
+
+    const userPermissions = this.getAuthorPermissions(GroupID, GroupTitle, forumName);
+
+    console.log(userPermissions);
   }
 
   // post functions
 
   setMasks() {
+    const forumName = this.getClearedForumName(FORUM.topic.forum_name);
+
     Object.values(this.maskedPosts).forEach(post => {
-      const authorPermissions = this.getAuthorPermissions(post.userId);
+      const { groupId, groupTitle } = this.authors[post.userId];
+      const authorPermissions = this.getAuthorPermissions(groupId, groupTitle, forumName);
       const profile = post.post.querySelector('.post-author ul');
       post.changes.forEach(change => {
 
@@ -348,19 +370,16 @@ class AddMask {
 
   // helpers
 
-  getAuthorPermissions(userId) {
-    const { groupId, groupTitle } = this.authors[userId];
+  getAuthorPermissions(groupId, groupTitle, forumName) {
 
-    if (groupId === '1' || groupId === '2') {
+    if (groupId == '1' || groupId == '2') {
       return {
         common: true,
         extended: true
       }
     }
 
-    const forumName = this.getClearedForumName(FORUM.topic.forum_name);
-
-    if (groupId === '3') {
+    if (groupId == '3') {
       return {
         common: this.opt.guestAccess
           ? this.opt.guestAccess.includes(forumName)
@@ -394,6 +413,13 @@ class AddMask {
       userId = postProfileUserLink ? postProfileUserLink.href.split('=')[1] : '1';
     }
     return userId;
+  }
+
+  getForumNameFromPage() {
+    const crumbs = document.getElementById('pun-crumbs1');
+    const link = crumbs.innerHTML.match(/\/viewforum\.php\?id=(\d*?)">(.*?)<\/a>/gi).pop();
+    let name = link.replace(/\/viewforum\.php\?id=(\d*?)">(.*?)<\/a>/gi, '$2');
+    return this.getClearedForumName(name);
   }
 
   getClearedForumName(name) {
