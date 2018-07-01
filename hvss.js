@@ -12,6 +12,8 @@ class AddMask {
     this.setSchema(opt);
     this.initMask = this.initMask.bind(this);
     this.setMasks = this.setMasks.bind(this);
+    this.insertCommonMask = this.insertCommonMask.bind(this);
+    this.showMaskDialog = this.showMaskDialog.bind(this);
 
     document.addEventListener('DOMContentLoaded', this.initMask);
   }
@@ -155,9 +157,15 @@ class AddMask {
       return;
     }
 
-    const userPermissions = this.getAuthorPermissions(GroupID, GroupTitle, forumName);
+    const userPermissions = this.getAuthorPermissions(GroupID, GroupTitle, this.getClearedForumName(forumName));
 
-    console.log(userPermissions);
+    if (userPermissions.extended) {
+      this.addButton(this.showMaskDialog);
+      this.insertMaskStyle();
+      this.insertMaskDialog();
+      } else if (userPermissions.common) {
+      this.addButton(this.insertCommonMask);
+    }
   }
 
   // post functions
@@ -342,11 +350,364 @@ class AddMask {
     signature.innerHTML = text;
   }
 
+  // dialog functions
+
+  addButton(eventListener) {
+    const form = document.getElementById('form-buttons');
+    const buttons = form.querySelector('tbody tr');
+
+    const button = document.createElement('td');
+      button.id = 'button-mask';
+      button.title = 'Маска профиля';
+      button.innerHTML = '<img src="/i/blank.gif">';
+      button.style.backgroundImage = `url(${this.opt.buttonImage})`;
+    button.addEventListener('click', eventListener);
+
+    buttons.insertAdjacentElement('beforeend', button);
+  }
+
+  insertCommonMask() {
+    bbcode('[icon]', '[/icon]');
+  }
+
+  insertMaskStyle() {
+    const style = document.createElement('style');
+      style.innerHTML = `#mask_dialog .hv-bg {
+                position: fixed;
+                display: flex;
+                align-content: center;
+                justify-content: center;
+                align-items: center;
+                z-index: 10;
+                width: 100%;
+                height: 100%;
+                left: 0;
+                top: 0;
+                background: rgba(0, 0, 0, .4);
+                cursor: pointer;
+            }
+
+            #mask_dialog .inner {
+                cursor: default;
+                margin: 0;
+                width: 760px;
+                max-width: 99%;
+                max-height: 90%;
+                overflow-x: auto;
+                z-index: 100;
+                box-shadow: 0 0 40px #222;
+                background: #F4F5F6 url("http://i.imgur.com/akmlat3.png");
+                padding: 8px;
+            }
+
+            #mask_dialog .inner * {
+                box-sizing: border-box;
+            }
+
+            #mask_dialog .inner .hv-mask-dialog-title {
+                text-align: center;
+                font-weight: 700;
+                font-size: 18px;
+                line-height: 34px;
+                position: relative;
+            }
+
+            #mask_dialog .inner .hv-error-list {
+                padding: 8px;
+                margin: 8px;
+                background: #DAA396;
+                color: #BD0909;
+                border: solid 1px;
+            }
+
+            #mask_dialog .inner .hv-mask-block {
+                display: flex;
+                justify-content: space-between;
+                align-items: stretch;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-preview-block {
+                flex: 0 0 120px;
+                text-align: center;
+                max-width: 120px;
+                overflow: hidden;
+                word-break: break-word;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-preview-block > div {
+                padding: 3px 0;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block {
+                flex: 1 1 auto;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-preview-block .hv-preview-avatar img {
+                max-width: 100px;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block {
+                flex: 1 1 auto;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block label {
+                display: block;
+                margin-bottom: px;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block label:after {
+                content: "";
+                display: table;
+                clear: both;
+                margin-bottom: 2px;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block .hv-description {
+                font-size: .9em;
+                color: #999;
+                font-style: italic;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block .hv-add-template {
+                cursor: pointer;
+                float: right;
+                padding: 2px 4px;
+                border: solid 1px #ccc;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block input,
+            #mask_dialog .inner .hv-mask-block .hv-form-block textarea {
+                width: 100%;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block .hv-mask-field {
+                position: relative;
+            }
+
+            #mask_dialog .inner .hv-mask-block .hv-form-block .hv-mask-field + .hv-mask-field {
+                margin-top: 10px;
+            }
+
+            #mask_dialog .inner .hv-masks-storage {
+                flex: 0 1 140px;
+                display: flex;
+                align-items: flex-start;
+                align-content: flex-start;
+                justify-content: flex-start;
+                padding: 8px;
+                flex-wrap: wrap;
+                list-style: none;
+            }
+
+            #mask_dialog .inner .hv-masks-storage.hidden {
+                display: none;
+            }
+
+            #mask_dialog .inner .hv-masks-storage .hv-mask-element {
+                width: 60px;
+                padding: 4px;
+                position: relative;
+            }
+
+            #mask_dialog .inner .hv-masks-storage .hv-mask-element img {
+                max-width: 100%;
+                cursor: pointer;
+            }
+
+            #mask_dialog .inner .hv-masks-storage .hv-mask-element .hv-mask-tooltip {
+                position: absolute;
+                top: 4px;
+                min-width: 160px;
+                right: 60px;
+                padding: 4px;
+                z-index: 5;
+                overflow-y: auto;
+                background: rgba(255, 255, 255, .6);
+                border: solid 1px #ccc;
+                display: none;
+            }
+
+            #mask_dialog .inner .hv-masks-storage .hv-mask-element > img:hover + .hv-mask-tooltip {
+                display: block;
+            }
+
+            #mask_dialog .inner .hv-masks-storage .hv-mask-element .hv-mask-tooltip > * {
+                zoom: .7
+            }
+
+            #mask_dialog .inner .hv-masks-storage .hv-mask-element .hv-delete-mask {
+                display: block;
+                font-size: 10px;
+                text-align: center;
+                cursor: pointer;
+            }
+
+            #mask_dialog .inner .hv-control {
+                padding: 8px;
+                text-align: center;
+                position: relative;
+            }
+
+            #mask_dialog .inner .hv-control input + input {
+                margin-left: 10px;
+            }
+
+            #mask_dialog .inner .hv-control .hv-clear-storage {
+                position: absolute;
+                right: 0;
+                bottom: 0;
+                color: #666;
+                cursor: pointer;
+            }`;
+
+      const docstyle = document.head.querySelector('link[href*="style"]');
+      document.head.insertBefore(style, docstyle);
+  }
+
+  insertMaskDialog() {
+    this.getStoragedMask().then(masks => {
+      this.storagedMask = masks;
+    });
+
+    this.dialog = document.createElement('div');
+    this.dialog.id = 'mask_dialog';
+    this.dialog.innerHTML = `
+      <div class="hv-bg">
+        <div class="inner container">
+          <div class="hv-mask-dialog-title">Маска профиля</div>
+          <ul class="hv-error-list" style="display: none;"></ul>
+          <div class="hv-mask-block">
+            <div class="hv-preview-block">
+              
+            </div>
+            <div class="hv-form-block">
+              ${this.getMaskForm()}
+            </div>
+            <ul class="hv-masks-storage">
+              
+            </ul>
+          </div>
+          <div class="hv-control">
+            ${this.getMaskControls()}
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('pun-main').appendChild(this.dialog);
+
+    this.clearMaskPreview();
+    this.getMaskPreviewBlock();
+    this.addMaskDialogListeners();
+  }
+
+  getMaskPreviewBlock() {
+    const parent = this.dialog.querySelector('.hv-preview-block');
+    console.log(parent);
+
+    const previewBlock = document.createElement('div');
+      previewBlock.className = 'hv-preview-block';
+
+    Object.keys(this.schema).forEach(key => {
+      let inner;
+      switch (key) {
+        case 'author':
+          inner = this.maskPreview.author;
+          break;
+        case 'title':
+          inner = this.maskPreview.title;
+          break;
+        case 'avatar':
+          inner = `<img src="${this.maskPreview.avatar}">`;
+          break;
+        case 'signature':
+          inner = '';
+          break;
+        default:
+          inner = this.maskPreview[key] || ''
+      }
+      previewBlock.insertAdjacentHTML('beforeend', `<div class="hv-preview-${key}">${inner}</div>`);
+    });
+    parent.innerHTML = previewBlock.outerHTML;
+  }
+
+  getMaskForm() {
+    const form = document.createElement('form');
+      form.id = 'mask_form';
+
+    Object.keys(this.schema).forEach(key => {
+      let input, description = '';
+
+      switch (this.schema[key].type) {
+        case 'html':
+          input = `<textarea id="mask_${key}" name="hv_mask_${key}" data-key="${key}"></textarea>`;
+          description = '<div class="description">Принимает html</div>';
+          break;
+        case 'signature':
+          input = `<textarea id="mask_${key}" name="hv_mask_${key}" data-key="${key}"></textarea>`;
+          description = '<div class="description">Принимает bbcode</div>';
+          break;
+        case 'bbcode':
+          input = `<textarea id="mask_${key}" name="hv_mask_${key}" data-key="${key}"></textarea>`;
+          description = '<div class="description">Принимает bbcode</div>';
+          break;
+        default:
+          input = `<input type="text" id="mask_${key}" name="hv_mask_${key}" data-key="${key}" />`
+      }
+
+      form.insertAdjacentHTML(
+        'beforeend',
+        `<div class="hv-mask-field ${key}">
+          <label for="hv_mask_${key}">
+            <b>${this.schema[key].title}</b>
+            ${description}
+          </label>
+          ${input}
+        </div>`
+      );
+    });
+    return form.outerHTML;
+  }
+
+  getMaskControls() {
+    return 'getMaskControls';
+  }
+
+  addMaskDialogListeners() {
+    const bg = this.dialog.querySelector('.hv-bg');
+    bg.addEventListener('click', event => {
+      if (event.target === bg) {
+        this.hideMaskDialog();
+      }
+    });
+
+    const form = this.dialog.querySelector('#mask_form');
+    form.addEventListener('change', event => {
+      const key = event.target.getAttribute('data-key');
+      this.maskPreview[key] = event.target.value || '';
+      this.getMaskPreviewBlock();
+    });
+  }
+
+  clearMaskPreview() {
+    this.maskPreview = {
+      author: UserLogin,
+      title: UserTitle ? UserTitle : 'Статус',
+      avatar: UserAvatar ? UserAvatar : this.opt.defaultAvatar
+    };
+  }
+ 
+  showMaskDialog() {
+    console.log('showMaskDialog');
+  }
+
+  hideMaskDialog() {
+    console.log('hideMaskDialog')
+  }
+
   // requests
 
   async getUsersInfo() {
     const params = {
-      async: false,
       url: '/api.php',
       data: {
         method: 'users.get',
@@ -366,6 +727,32 @@ class AddMask {
         groupTitle: user.group_title
       };
     });
+  }
+
+  async getStoragedMask() {
+    const params = {
+      url: '/api.php',
+      method: 'GET',
+      data: {
+        method: 'storage.get',
+        key: 'maskListUser'
+      }
+    };
+
+    const { response } = await $.ajax(params);
+
+    if (!response) {
+      return [];
+    }
+
+    const { maskListUser } = response.storage.data;
+
+    try {
+      return JSON.parse(maskListUser);
+    }
+    catch (err) {
+      return decodeURI(maskListUser).split('|splitKey|').map(str => JSON.parse(str));
+    }
   }
 
   // helpers
@@ -419,7 +806,7 @@ class AddMask {
     const crumbs = document.getElementById('pun-crumbs1');
     const link = crumbs.innerHTML.match(/\/viewforum\.php\?id=(\d*?)">(.*?)<\/a>/gi).pop();
     let name = link.replace(/\/viewforum\.php\?id=(\d*?)">(.*?)<\/a>/gi, '$2');
-    return this.getClearedForumName(name);
+    return name;
   }
 
   getClearedForumName(name) {
