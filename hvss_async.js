@@ -12,7 +12,7 @@
 
 let hvScriptSet = {
 
-    addMask: function (opt) {
+    addMask: async function (opt) {
         let changeList = {
             'author': {
                 title: 'Ник',
@@ -72,7 +72,7 @@ let hvScriptSet = {
 
         let defaultAvatar = opt.defaultAvatar || 'http://i.imgur.com/bQuC3S1.png';
 
-        let prevMasks = getStorageMask() !== '' ? getStorageMask().split('|splitKey|') : [];
+        let prevMasks = await getStorageMask() !== '' ? await getStorageMask().split('|splitKey|') : [];
 
         let posts = [];
 
@@ -1226,15 +1226,11 @@ let hvScriptSet = {
                 false;
         }
 
-        function getStorageMask() {
-            let mask = $.ajax({
-                async: false,
-                url: '/api.php',
-                data: {
-                    method: 'storage.get',
-                    key: 'maskListUser'
-                }
-            });
+        async function getStorageMask() {
+            var url = new URL('/api.php', window.location.origin),
+                params = {method: 'storage.get', key: 'maskListUser'}
+            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]))
+            var mask = await fetch(url).then(response => response.json())
 
             return JSON.parse(mask.responseText).response &&
             JSON.parse(mask.responseText).response.storage.data.maskListUser ?
