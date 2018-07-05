@@ -72,7 +72,8 @@ let hvScriptSet = {
 
         let defaultAvatar = opt.defaultAvatar || 'http://i.imgur.com/bQuC3S1.png';
 
-        let prevMasks = await getStorageMask() !== '' ? await getStorageMask().split('|splitKey|') : [];
+        let storageMask = await getStorageMask();
+        let prevMasks = await storageMask !== '' ? await storageMask.split('|splitKey|') : [];
 
         let posts = [];
 
@@ -1230,11 +1231,11 @@ let hvScriptSet = {
             var url = new URL('/api.php', window.location.origin),
                 params = {method: 'storage.get', key: 'maskListUser'}
             Object.keys(params).forEach(key => url.searchParams.append(key, params[key]))
-            var mask = await fetch(url).then(response => response.json())
+            var mask = await fetch(url, {credentials: "same-origin"}).then(response => response.json())
 
-            return JSON.parse(mask.responseText).response &&
-            JSON.parse(mask.responseText).response.storage.data.maskListUser ?
-                decodeURI(JSON.parse(mask.responseText).response.storage.data.maskListUser) : '';
+            return mask.response &&
+            mask.response.storage.data.maskListUser ?
+                decodeURI(mask.response.storage.data.maskListUser) : '';
         }
 
         function getClearedPost(post, chList) {
@@ -1280,9 +1281,9 @@ let hvScriptSet = {
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('load', async () => {
             if (FORUM.topic) {
-                getPosts();
+                await getPosts();
                 if (GroupID !== 3) {
                     getDialog();
                 }
