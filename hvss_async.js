@@ -976,12 +976,13 @@ let hvScriptSet = {
             input.value = value;
         }
 
-        function insertMask() {
+        async function insertMask() {
             if (Object.keys(tmpMask).length > 0) {
                 insert(getStrMask());
                 let tempMask = JSON.stringify(tmpMask);
                 if (Object.keys(prevMasks).length > 0) {
-                    prevMasks = getStorageMask().split('|splitKey|');
+                    let storedMasks = await getStorageMask();
+                    prevMasks = await storedMasks.split('|splitKey|');
                     if (!(hasMaskInSrorage(prevMasks, tmpMask) + 1)) {
                         if (prevMasks.length > 5) {
                             prevMasks.splice(0, 1);
